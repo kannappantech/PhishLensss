@@ -88,7 +88,7 @@ Required JSON structure:
   "recommendations": ["rec1", "rec2", "rec3", "rec4"]
 }`;
 
-    // Call Groq API (Free, works in India!)
+    // Call Groq API with updated model
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -96,7 +96,7 @@ Required JSON structure:
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Analyze this URL for security threats: ${url}` }
