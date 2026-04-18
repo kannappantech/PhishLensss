@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishLens — AI Threat Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a12;
+    --surface: #0a1422;
+    --surface2: #0f1e30;
+    --border: rgba(0,200,255,0.12);
+    --border-bright: rgba(0,200,255,0.35);
+    --cyan: #00c8ff;
+    --cyan-dim: rgba(0,200,255,0.15);
+    --cyan-glow: rgba(0,200,255,0.4);
+    --green: #00ff9d;
+    --yellow: #ffd93d;
+    --red: #ff4d6d;
+    --orange: #ff8c42;
+    --text: #c8dde8;
+    --text-dim: #4a6a7a;
+    --text-bright: #e8f4f8;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 2;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0 0;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo-group { display: flex; align-items: center; gap: 12px; }
+
+  .logo-icon { width: 44px; height: 44px; }
+  .logo-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 8px var(--cyan)); }
+
+  .logo-text {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
+    color: var(--text-bright);
+  }
+  .logo-text span { color: var(--cyan); }
+
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* HERO */
+  .hero { text-align: center; padding: 56px 0 40px; }
+
+  .hero-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid var(--border-bright);
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+    background: var(--cyan-dim);
+  }
+
+  .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(2rem, 6vw, 3.4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text-bright);
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+  .hero h1 em { font-style: normal; color: var(--cyan); }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--text-dim);
+    max-width: 480px;
+    margin: 0 auto 40px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* SCAN BOX */
+  .scan-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.6;
+  }
+
+  .input-row { display: flex; gap: 10px; align-items: center; }
+
+  .url-wrap { flex: 1; position: relative; }
+
+  .url-prefix {
+    position: absolute;
+    left: 16px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  #url-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 16px 16px 52px;
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    color: var(--text-bright);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    caret-color: var(--cyan);
+  }
+  #url-input::placeholder { color: var(--text-dim); }
+  #url-input:focus {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 0 3px var(--cyan-dim);
+  }
+
+  #scan-btn {
+    background: var(--cyan);
+    color: #050a12;
+    border: none;
+    border-radius: 10px;
+    padding: 16px 28px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+  #scan-btn:hover:not(:disabled) {
+    background: #33d6ff;
+    box-shadow: 0 0 24px var(--cyan-glow);
+    transform: translateY(-1px);
+  }
+  #scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .scan-btn-icon { width: 16px; height: 16px; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .options-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+  .option-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    cursor: pointer;
+    font-family: var(--body);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .option-pill.active {
+    border-color: var(--border-bright);
+    background: var(--cyan-dim);
+    color: var(--cyan);
+  }
+  .option-pill:hover { border-color: var(--border-bright); color: var(--text); }
+
+  .option-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+  }
+  .option-dot.filled { background: currentColor; }
+
+  .error-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--red);
+  }
+  .error-bar.show { display: flex; }
+
+  /* PROGRESS */
+  #scan-progress { display: none; margin-top: 28px; }
+  #scan-progress.show { display: block; }
+
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--cyan);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-track { height: 3px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    border-radius: 100px;
+    width: 0%;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  .progress-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .p-step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 10px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    transition: all 0.3s;
+    letter-spacing: 0.05em;
+  }
+  .p-step.active {
+    border-color: var(--cyan);
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0,200,255,0.15);
+  }
+  .p-step.done {
+    border-color: rgba(0,255,157,0.3);
+    background: rgba(0,255,157,0.06);
+    color: var(--green);
+  }
+  .p-step-icon { font-size: 1rem; margin-bottom: 4px; }
+
+  /* RESULTS */
+  #results { display: none; margin-top: 32px; animation: fadeUp 0.5s ease forwards; }
+  #results.show { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .verdict-bar {
+    border-radius: 14px;
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .verdict-bar.safe { background: rgba(0,255,157,0.06); border: 1px solid rgba(0,255,157,0.25); }
+  .verdict-bar.suspicious { background: rgba(255,217,61,0.06); border: 1px solid rgba(255,217,61,0.25); }
+  .verdict-bar.malicious { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.3); }
+
+  .verdict-icon {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; flex-shrink: 0;
+  }
+  .safe .verdict-icon { background: rgba(0,255,157,0.12); }
+  .suspicious .verdict-icon { background: rgba(255,217,61,0.12); }
+  .malicious .verdict-icon { background: rgba(255,77,109,0.12); }
+
+  .verdict-text { flex: 1; min-width: 140px; }
+
+  .verdict-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .safe .verdict-label { color: rgba(0,255,157,0.6); }
+  .suspicious .verdict-label { color: rgba(255,217,61,0.6); }
+  .malicious .verdict-label { color: rgba(255,77,109,0.6); }
+
+  .verdict-title {
+    font-family: var(--display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-bright);
+  }
+  .verdict-sub { font-size: 0.82rem; color: var(--text-dim); margin-top: 4px; font-weight: 300; }
+
+  .gauge-wrap { text-align: center; flex-shrink: 0; }
+  .gauge-svg { width: 90px; height: 90px; }
+
+  .threat-strip { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+
+  .threat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.75rem;
+  }
+  .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .chip-label { color: var(--text-dim); font-weight: 300; }
+  .chip-val { color: var(--text-bright); font-weight: 500; margin-left: 2px; }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border-bright); }
+
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+
+  .card-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+  }
+
+  .card-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-bright);
+    letter-spacing: 0.01em;
+  }
+
+  .card-badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border-radius: 100px;
+  }
+  .badge-safe { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+  .badge-warn { background: rgba(255,217,61,0.1); color: var(--yellow); border: 1px solid rgba(255,217,61,0.2); }
+  .badge-danger { background: rgba(255,77,109,0.1); color: var(--red); border: 1px solid rgba(255,77,109,0.2); }
+
+  .findings-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+  .finding-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text);
+    font-weight: 300;
+  }
+  .finding-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+
+  .indicators-section, .recs-section, .raw-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .raw-section { padding: 0; overflow: hidden; }
+
+  .section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+
+  .section-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-bright);
+  }
+
+  .section-tag {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 100px;
+    margin-left: auto;
+  }
+
+  .indicator-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .indicator {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .ind-label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .ind-bar-track {
+    height: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 100px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .ind-bar-fill { height: 100%; border-radius: 100px; transition: width 0.8s ease 0.3s; }
+  .ind-value { font-family: var(--display); font-size: 1rem; font-weight: 700; color: var(--text-bright); }
+
+  .rec-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .rec-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .rec-item:first-child { padding-top: 0; }
+
+  .rec-num {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: var(--cyan-dim);
+    border: 1px solid var(--border-bright);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--cyan);
+    flex-shrink: 0;
+  }
+  .rec-text { font-size: 0.82rem; line-height: 1.5; color: var(--text); font-weight: 300; }
+
+  .raw-toggle {
+    width: 100%;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .raw-toggle:hover { color: var(--cyan); }
+  .raw-toggle svg { transition: transform 0.2s; }
+  .raw-toggle.open svg { transform: rotate(180deg); }
+
+  .raw-body { display: none; padding: 0 20px 20px; }
+  .raw-body.open { display: block; }
+
+  .raw-pre {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .raw-pre::-webkit-scrollbar { width: 4px; }
+  .raw-pre::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 100px; }
+
+  .result-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  .btn-outline {
+    display: flex; align-items: center; gap: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    font-family: var(--body);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--border-bright); color: var(--cyan); }
+
+  .btn-new {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--cyan-dim);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    padding: 10px 18px;
+    color: var(--cyan);
+    font-size: 0.8rem;
+    font-family: var(--body);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+  .btn-new:hover { background: rgba(0,200,255,0.25); box-shadow: 0 0 16px var(--cyan-dim); }
+
+  /* HISTORY */
+  #history-section { margin-top: 40px; display: none; }
+  #history-section.show { display: block; }
+
+  .history-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+  .history-title {
+    font-family: var(--display);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-bright);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .history-count {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+  }
+
+  .history-clear {
+    background: none; border: none;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    cursor: pointer;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    transition: color 0.15s;
+  }
+  .history-clear:hover { color: var(--red); }
+
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .history-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .history-row:hover { border-color: var(--border-bright); }
+
+  .h-verdict-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .h-url { flex: 1; font-family: var(--mono); font-size: 0.72rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h-score { font-family: var(--display); font-weight: 700; font-size: 0.85rem; }
+  .h-time { font-family: var(--mono); font-size: 0.6rem; color: var(--text-dim); }
+
+  footer {
+    text-align: center;
+    padding: 40px 0 0;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+  footer p { margin-bottom: 8px; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--cyan);
+    z-index: 100;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Responsive */
+  @media (max-width: 620px) {
+    .cards-grid { grid-template-columns: 1fr; }
+    .progress-steps { grid-template-columns: repeat(2, 1fr); }
+    .input-row { flex-direction: column; }
+    #scan-btn { width: 100%; justify-content: center; }
+    .indicator-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">
+        <svg viewBox="0 0 44 44" fill="none">
+          <path d="M22 4L6 10V22C6 30.837 13.163 38 22 40C30.837 38 38 30.837 38 22V10L22 4Z" stroke="#00c8ff" stroke-width="1.5" fill="rgba(0,200,255,0.06)"/>
+          <circle cx="22" cy="21" r="6" stroke="#00c8ff" stroke-width="1.2"/>
+          <line x1="22" y1="15" x2="22" y2="12" stroke="#00c8ff" stroke-width="1.2"/>
+          <line x1="22" y1="30" x2="22" y2="27" stroke="#00c8ff" stroke-width="1.2"/>
+          <line x1="28" y1="21" x2="31" y2="21" stroke="#00c8ff" stroke-width="1.2"/>
+          <line x1="13" y1="21" x2="16" y2="21" stroke="#00c8ff" stroke-width="1.2"/>
+          <path d="M22 19L23.5 21L22 23L20.5 21Z" fill="#00c8ff"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">Phish<span>Lens</span></div>
+        <div class="logo-sub">AI Threat Intelligence</div>
+      </div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      AI ENGINE ONLINE
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="hero-tag">⚡ Powered by Claude AI · Secured by Netlify</div>
+    <h1>Detect threats before<br>they <em>detect you</em></h1>
+    <p>Advanced AI threat analysis for any URL. Phishing patterns, domain anomalies, content risks — exposed in seconds.</p>
+  </div>
+
+  <div class="scan-box" id="scan-box-el">
+    <div class="input-row">
+      <div class="url-wrap">
+        <span class="url-prefix">URL://</span>
+        <input type="text" id="url-input" placeholder="paste suspicious URL here..." autocomplete="off" spellcheck="false">
+      </div>
+      <button id="scan-btn">
+        <svg class="scan-btn-icon" id="btn-icon" viewBox="0 0 16 16" fill="none">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Scan
+      </button>
+    </div>
+
+    <div class="options-row">
+      <span style="font-size:0.7rem;color:var(--text-dim);align-self:center;font-family:var(--mono);letter-spacing:0.05em;">DEPTH:</span>
+      <div class="option-pill active" data-depth="quick" onclick="setDepth(this,'quick')">
+        <div class="option-dot filled"></div> Quick Scan
+      </div>
+      <div class="option-pill" data-depth="deep" onclick="setDepth(this,'deep')">
+        <div class="option-dot"></div> Deep Analysis
+      </div>
+      <div class="option-pill" data-depth="expert" onclick="setDepth(this,'expert')">
+        <div class="option-dot"></div> Expert Report
+      </div>
+    </div>
+
+    <div class="error-bar" id="error-bar">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#ff4d6d" stroke-width="1.2"/><line x1="7" y1="4" x2="7" y2="7.5" stroke="#ff4d6d" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="10" r="0.8" fill="#ff4d6d"/></svg>
+      <span id="error-msg"></span>
+    </div>
+
+    <div id="scan-progress">
+      <div class="progress-label">
+        <span id="prog-text">INITIALIZING SCAN</span>
+        <span id="prog-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+      <div class="progress-steps">
+        <div class="p-step" id="step-0"><div class="p-step-icon">🔍</div>DNS CHECK</div>
+        <div class="p-step" id="step-1"><div class="p-step-icon">🌐</div>URL PARSE</div>
+        <div class="p-step" id="step-2"><div class="p-step-icon">🧠</div>AI ANALYSIS</div>
+        <div class="p-step" id="step-3"><div class="p-step-icon">📊</div>SCORING</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="verdict-bar" id="verdict-bar">
+      <div class="verdict-icon" id="verdict-icon"></div>
+      <div class="verdict-text">
+        <div class="verdict-label" id="verdict-label"></div>
+        <div class="verdict-title" id="verdict-title"></div>
+        <div class="verdict-sub" id="verdict-sub"></div>
+      </div>
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" viewBox="0 0 90 90" id="gauge-svg">
+          <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="6"/>
+          <circle cx="45" cy="45" r="36" fill="none" stroke="#00c8ff" stroke-width="6"
+            stroke-dasharray="226" stroke-dashoffset="226"
+            stroke-linecap="round"
+            transform="rotate(-90 45 45)"
+            id="gauge-arc"/>
+          <text x="45" y="42" text-anchor="middle" font-family="Syne,sans-serif" font-size="16" font-weight="800" fill="white" id="gauge-num">0</text>
+          <text x="45" y="54" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="6.5" fill="rgba(255,255,255,0.4)" letter-spacing="1">RISK</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="threat-strip" id="threat-strip"></div>
+    <div class="cards-grid" id="cards-grid"></div>
+
+    <div class="indicators-section">
+      <div class="section-head">
+        <span style="font-size:1rem">📡</span>
+        <div class="section-title">Threat Indicators</div>
+        <div class="section-tag">LIVE METRICS</div>
+      </div>
+      <div class="indicator-grid" id="indicator-grid"></div>
+    </div>
+
+    <div class="recs-section">
+      <div class="section-head">
+        <span style="font-size:1rem">🛡️</span>
+        <div class="section-title">Security Recommendations</div>
+      </div>
+      <div id="recs-list"></div>
+    </div>
+
+    <div class="raw-section">
+      <button class="raw-toggle" id="raw-toggle" onclick="toggleRaw()">
+        <span>⌨ RAW INTELLIGENCE DATA</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <div class="raw-body" id="raw-body">
+        <pre class="raw-pre" id="raw-pre"></pre>
+      </div>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn-outline" onclick="copyReport()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 9V2C1 1.45 1.45 1 2 1h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Copy Report
+      </button>
+      <button class="btn-outline" onclick="shareResult()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="10.5" cy="2.5" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="10.5" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="2.5" cy="6.5" r="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="3.8" y1="5.7" x2="9.2" y2="3.3" stroke="currentColor" stroke-width="1.2"/><line x1="3.8" y1="7.3" x2="9.2" y2="9.7" stroke="currentColor" stroke-width="1.2"/></svg>
+        Share
+      </button>
+      <button class="btn-new" onclick="newScan()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5A4.5 4.5 0 103.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2 1v3h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        New Scan
+      </button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="history-section">
+    <div class="history-head">
+      <div class="history-title">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4v3.5L9 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Scan History
+        <span class="history-count" id="hist-count">0</span>
+      </div>
+      <button class="history-clear" onclick="clearHistory()">CLEAR ALL</button>
+    </div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+  <footer>
+    <p>PHISHLENS v2.0 — AI THREAT INTELLIGENCE PLATFORM</p>
+    <p>Powered by Claude AI · Deployed on Netlify</p>
+    <p style="margin-top:12px;color:rgba(74,106,122,0.5)">⚠ Results are AI-generated estimates. Always verify with official security tools.</p>
+  </footer>
+</div>
+
+<div class="toast" id="toast">
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let currentDepth = 'quick';
+let currentResult = null;
+let scanHistory = JSON.parse(localStorage.getItem('phishlens_history') || '[]');
+
+// ─────────────────────────────────────────
+// DEPTH SELECTOR
+// ─────────────────────────────────────────
+function setDepth(el, depth) {
+  document.querySelectorAll('.option-pill').forEach(p => {
+    p.classList.remove('active');
+    p.querySelector('.option-dot').classList.remove('filled');
+  });
+  el.classList.add('active');
+  el.querySelector('.option-dot').classList.add('filled');
+  currentDepth = depth;
+}
+
+// ─────────────────────────────────────────
+// SCAN TRIGGER
+// ─────────────────────────────────────────
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') scan();
+});
+document.getElementById('scan-btn').addEventListener('click', scan);
+
+async function scan() {
+  const raw = document.getElementById('url-input').value.trim();
+  hideError();
+  if (!raw) { showError('Please enter a URL to scan.'); return; }
+
+  let url = raw;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  try { new URL(url); } catch {
+    showError('Invalid URL format. Example: example.com');
+    return;
+  }
+
+  setScanning(true);
+  hideResults();
+
+  try {
+    // ← Calls YOUR Netlify function, not the API directly
+    const res = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, depth: currentDepth })
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Scan failed');
+
+    renderResults(result, url);
+    addToHistory(url, result);
+  } catch (err) {
+    showError('Analysis failed: ' + (err.message || 'Server error. Check your Netlify function logs.'));
+  } finally {
+    setScanning(false);
+  }
+}
+
+// ─────────────────────────────────────────
+// PROGRESS ANIMATION
+// ─────────────────────────────────────────
+let progressTimer = null;
+
+function setScanning(on) {
+  const btn = document.getElementById('scan-btn');
+  const icon = document.getElementById('btn-icon');
+  const prog = document.getElementById('scan-progress');
+
+  if (on) {
+    btn.disabled = true;
+    icon.innerHTML = `<circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="8 6" style="transform-origin:8px 8px;animation:spin 0.8s linear infinite"/>`;
+    prog.classList.add('show');
+    animateProgress();
+  } else {
+    btn.disabled = false;
+    icon.innerHTML = `<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`;
+    prog.classList.remove('show');
+    clearTimeout(progressTimer);
+    resetProgress();
+  }
+}
+
+function animateProgress() {
+  const steps = [
+    { pct: 20, step: 0, text: 'CHECKING DNS RECORDS' },
+    { pct: 45, step: 1, text: 'PARSING URL STRUCTURE' },
+    { pct: 80, step: 2, text: 'RUNNING AI ANALYSIS' },
+    { pct: 95, step: 3, text: 'CALCULATING RISK SCORE' }
+  ];
+
+  function advance(i) {
+    if (i >= steps.length) return;
+    const s = steps[i];
+    document.getElementById('prog-fill').style.width = s.pct + '%';
+    document.getElementById('prog-pct').textContent = s.pct + '%';
+    document.getElementById('prog-text').textContent = s.text;
+    for (let j = 0; j < 4; j++) {
+      const el = document.getElementById('step-' + j);
+      el.classList.remove('active', 'done');
+      if (j < i) el.classList.add('done');
+      if (j === i) el.classList.add('active');
+    }
+    progressTimer = setTimeout(() => advance(i + 1), 900 + Math.random() * 400);
+  }
+  advance(0);
+}
+
+function resetProgress() {
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('prog-pct').textContent = '0%';
+  document.getElementById('prog-text').textContent = 'INITIALIZING SCAN';
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('step-' + i);
+    if (el) el.classList.remove('active', 'done');
+  }
+}
+
+// ─────────────────────────────────────────
+// RENDER RESULTS
+// ─────────────────────────────────────────
+function renderResults(data, url) {
+  currentResult = { data, url };
+  const v = data.verdict;
+  const score = Math.min(100, Math.max(0, data.risk_score || 0));
+
+  const bar = document.getElementById('verdict-bar');
+  bar.className = 'verdict-bar ' + v.toLowerCase();
+  document.getElementById('verdict-icon').textContent = v === 'SAFE' ? '✅' : v === 'SUSPICIOUS' ? '⚠️' : '🚨';
+  document.getElementById('verdict-label').textContent = '// THREAT ASSESSMENT';
+  document.getElementById('verdict-title').textContent = v === 'SAFE' ? 'No Threat Detected' : v === 'SUSPICIOUS' ? 'Suspicious Activity' : 'Malicious Website';
+  document.getElementById('verdict-sub').textContent = data.summary || '';
+
+  animateGauge(score, v);
+
+  const strip = document.getElementById('threat-strip');
+  strip.innerHTML = (data.threat_chips || []).map(c => `
+    <div class="threat-chip">
+      <div class="chip-dot" style="background:${c.type==='safe'?'var(--green)':c.type==='warn'?'var(--yellow)':c.type==='danger'?'var(--red)':'var(--cyan)'}"></div>
+      <span class="chip-label">${c.label}:</span>
+      <span class="chip-val">${c.value}</span>
+    </div>
+  `).join('');
+
+  const cardDefs = [
+    { key: 'url_analysis', icon: '🔗', title: 'URL Analysis' },
+    { key: 'content_analysis', icon: '📄', title: 'Content Analysis' },
+    { key: 'domain_analysis', icon: '🌐', title: 'Domain Analysis' },
+    { key: 'behavioral_analysis', icon: '🔬', title: 'Behavioral Analysis' }
+  ];
+
+  document.getElementById('cards-grid').innerHTML = cardDefs.map(def => {
+    const section = data[def.key] || { status: 'SAFE', findings: [] };
+    const st = section.status || 'SAFE';
+    const badgeClass = st === 'SAFE' ? 'badge-safe' : st === 'WARNING' ? 'badge-warn' : 'badge-danger';
+    const dotColor = st === 'SAFE' ? 'var(--green)' : st === 'WARNING' ? 'var(--yellow)' : 'var(--red)';
+    return `
+      <div class="card">
+        <div class="card-head">
+          <div class="card-icon">${def.icon}</div>
+          <div class="card-title">${def.title}</div>
+          <div class="card-badge ${badgeClass}">${st}</div>
+        </div>
+        <ul class="findings-list">
+          ${(section.findings || []).map(f => `
+            <li class="finding-item">
+              <div class="finding-dot" style="background:${dotColor}"></div>
+              <span>${f}</span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+  }).join('');
+
+  const ti = data.threat_indicators || {};
+  const indicators = [
+    { label: 'PHISHING RISK', value: ti.phishing_probability ?? 0, color: getRiskColor(ti.phishing_probability ?? 0) },
+    { label: 'MALWARE RISK', value: ti.malware_probability ?? 0, color: getRiskColor(ti.malware_probability ?? 0) },
+    { label: 'SCAM RISK', value: ti.scam_probability ?? 0, color: getRiskColor(ti.scam_probability ?? 0) },
+    { label: 'REPUTATION', value: ti.reputation_score ?? 50, color: getGoodColor(ti.reputation_score ?? 50) },
+    { label: 'SSL TRUST', value: ti.ssl_trust ?? 50, color: getGoodColor(ti.ssl_trust ?? 50) },
+    { label: 'DOMAIN AGE RISK', value: ti.domain_age_risk ?? 50, color: getRiskColor(ti.domain_age_risk ?? 50) }
+  ];
+
+  document.getElementById('indicator-grid').innerHTML = indicators.map(ind => `
+    <div class="indicator">
+      <div class="ind-label">${ind.label}</div>
+      <div class="ind-bar-track">
+        <div class="ind-bar-fill" style="width:${ind.value}%;background:${ind.color};box-shadow:0 0 8px ${ind.color}40"></div>
+      </div>
+      <div class="ind-value" style="color:${ind.color}">${ind.value}<span style="font-size:0.6rem;opacity:0.6">%</span></div>
+    </div>
+  `).join('');
+
+  document.getElementById('recs-list').innerHTML = (data.recommendations || []).map((r, i) => `
+    <div class="rec-item">
+      <div class="rec-num">0${i+1}</div>
+      <div class="rec-text">${r}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('raw-pre').textContent = JSON.stringify(data, null, 2);
+
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function getRiskColor(v) {
+  if (v < 30) return 'var(--green)';
+  if (v < 60) return 'var(--yellow)';
+  if (v < 80) return 'var(--orange)';
+  return 'var(--red)';
+}
+
+function getGoodColor(v) {
+  if (v > 70) return 'var(--green)';
+  if (v > 40) return 'var(--yellow)';
+  return 'var(--red)';
+}
+
+function animateGauge(score, verdict) {
+  const arc = document.getElementById('gauge-arc');
+  const num = document.getElementById('gauge-num');
+  const color = verdict === 'SAFE' ? '#00ff9d' : verdict === 'SUSPICIOUS' ? '#ffd93d' : '#ff4d6d';
+  arc.setAttribute('stroke', color);
+  arc.style.filter = `drop-shadow(0 0 6px ${color})`;
+  let current = 0;
+  const step = score / 40;
+  const timer = setInterval(() => {
+    current = Math.min(current + step, score);
+    num.textContent = Math.round(current);
+    arc.style.strokeDashoffset = 226 - (current / 100) * 226;
+    if (current >= score) clearInterval(timer);
+  }, 20);
+}
+
+// ─────────────────────────────────────────
+// HISTORY
+// ─────────────────────────────────────────
+function addToHistory(url, data) {
+  scanHistory.unshift({
+    url, verdict: data.verdict, score: data.risk_score,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    data
+  });
+  if (scanHistory.length > 10) scanHistory.pop();
+  localStorage.setItem('phishlens_history', JSON.stringify(scanHistory));
+  renderHistory();
+}
+
+function renderHistory() {
+  const section = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  if (scanHistory.length === 0) { section.classList.remove('show'); return; }
+  section.classList.add('show');
+  document.getElementById('hist-count').textContent = scanHistory.length;
+  list.innerHTML = scanHistory.map((h, i) => {
+    const color = h.verdict === 'SAFE' ? 'var(--green)' : h.verdict === 'SUSPICIOUS' ? 'var(--yellow)' : 'var(--red)';
+    return `
+      <div class="history-row" onclick="loadFromHistory(${i})">
+        <div class="h-verdict-dot" style="background:${color};box-shadow:0 0 6px ${color}"></div>
+        <div class="h-url">${h.url.replace(/^https?:\/\//,'').slice(0,60)}</div>
+        <div class="h-score" style="color:${color}">${h.score}</div>
+        <div class="h-time">${h.time}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function loadFromHistory(i) {
+  const h = scanHistory[i];
+  document.getElementById('url-input').value = h.url;
+  renderResults(h.data, h.url);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearHistory() {
+  scanHistory = [];
+  localStorage.removeItem('phishlens_history');
+  renderHistory();
+}
+
+// ─────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────
+function showError(msg) {
+  const bar = document.getElementById('error-bar');
+  document.getElementById('error-msg').textContent = msg;
+  bar.classList.add('show');
+}
+function hideError() { document.getElementById('error-bar').classList.remove('show'); }
+function hideResults() { document.getElementById('results').classList.remove('show'); }
+function newScan() {
+  hideResults();
+  document.getElementById('url-input').value = '';
+  document.getElementById('url-input').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function toggleRaw() {
+  document.getElementById('raw-toggle').classList.toggle('open');
+  document.getElementById('raw-body').classList.toggle('open');
+}
+function copyReport() {
+  if (!currentResult) return;
+  const d = currentResult.data;
+  const text = `PhishLens Security Report\nURL: ${currentResult.url}\nVerdict: ${d.verdict}\nRisk Score: ${d.risk_score}/100\n\n${d.summary}\n\nRecommendations:\n${(d.recommendations||[]).map((r,i)=>`${i+1}. ${r}`).join('\n')}`;
+  navigator.clipboard.writeText(text).then(() => showToast('Report copied!'));
+}
+function shareResult() {
+  if (!currentResult) return;
+  const text = `🔍 PhishLens: ${currentResult.url}\nVerdict: ${currentResult.data.verdict} · Risk: ${currentResult.data.risk_score}/100`;
+  if (navigator.share) navigator.share({ title: 'PhishLens Result', text });
+  else navigator.clipboard.writeText(text).then(() => showToast('Share text copied!'));
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+renderHistory();
+</script>
+</body>
+</html>
