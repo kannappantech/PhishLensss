@@ -1,8 +1,8 @@
 // PhishLens - Netlify Serverless Function
-// This runs on Netlify's servers — your API key is NEVER exposed to the browser.
+// Powered by Google Gemini API (Free Tier)
+// Your API key is NEVER exposed to the browser.
 
 exports.handler = async (event) => {
-  // Only allow POST requests
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -10,12 +10,16 @@ exports.handler = async (event) => {
     };
   }
 
-  // CORS headers — allows your frontend to call this function
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Content-Type": "application/json",
   };
+
+  // Handle CORS preflight
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
+  }
 
   try {
     const { url, depth } = JSON.parse(event.body);
@@ -31,82 +35,78 @@ exports.handler = async (event) => {
     const depthInstructions = {
       quick: "Provide a concise quick-scan analysis with essential findings only.",
       deep: "Provide a thorough deep analysis covering all threat vectors in detail.",
-      expert:
-        "Provide an expert-level forensic security report with technical depth, WHOIS insights, TLD risk, and advanced phishing pattern detection.",
+      expert: "Provide an expert-level forensic security report with technical depth, WHOIS insights, TLD risk, and advanced phishing pattern detection.",
     };
 
-    const systemPrompt = `You are PhishLens, an elite cybersecurity AI threat intelligence system. Analyze URLs for phishing, scams, and malicious intent with the precision of a senior security researcher.
+    const prompt = `You are PhishLens, an elite cybersecurity AI threat intelligence system. Analyze URLs for phishing, scams, and malicious intent with the precision of a senior security researcher.
 
 ${depthInstructions[depth] || depthInstructions.quick}
 
-You MUST respond ONLY with a valid JSON object. No markdown, no explanations outside the JSON.
+Analyze this URL for security threats: ${url}
 
-JSON Schema:
+You MUST respond ONLY with a valid JSON object. No markdown, no backticks, no explanations — just raw JSON.
+
+Required JSON structure:
 {
-  "verdict": "SAFE" | "SUSPICIOUS" | "MALICIOUS",
-  "risk_score": number (0-100, where 0=completely safe, 100=definitely malicious),
+  "verdict": "SAFE" or "SUSPICIOUS" or "MALICIOUS",
+  "risk_score": number between 0 and 100,
   "summary": "1-2 sentence plain English verdict",
   "url_analysis": {
-    "status": "SAFE" | "WARNING" | "DANGER",
+    "status": "SAFE" or "WARNING" or "DANGER",
     "findings": ["finding1", "finding2", "finding3"]
   },
   "content_analysis": {
-    "status": "SAFE" | "WARNING" | "DANGER",
+    "status": "SAFE" or "WARNING" or "DANGER",
     "findings": ["finding1", "finding2", "finding3"]
   },
   "domain_analysis": {
-    "status": "SAFE" | "WARNING" | "DANGER",
+    "status": "SAFE" or "WARNING" or "DANGER",
     "findings": ["finding1", "finding2", "finding3"]
   },
   "behavioral_analysis": {
-    "status": "SAFE" | "WARNING" | "DANGER",
+    "status": "SAFE" or "WARNING" or "DANGER",
     "findings": ["finding1", "finding2", "finding3"]
   },
   "threat_indicators": {
-    "phishing_probability": number (0-100),
-    "malware_probability": number (0-100),
-    "scam_probability": number (0-100),
-    "reputation_score": number (0-100, higher=better reputation),
-    "ssl_trust": number (0-100),
-    "domain_age_risk": number (0-100, higher=riskier)
+    "phishing_probability": number between 0 and 100,
+    "malware_probability": number between 0 and 100,
+    "scam_probability": number between 0 and 100,
+    "reputation_score": number between 0 and 100,
+    "ssl_trust": number between 0 and 100,
+    "domain_age_risk": number between 0 and 100
   },
   "threat_chips": [
-    {"label": "SSL Certificate", "value": "Valid/Invalid/Unknown", "type": "safe|warn|danger|info"},
-    {"label": "Domain Age", "value": "Estimated age or New", "type": "safe|warn|danger|info"},
-    {"label": "TLD Risk", "value": "Low/Medium/High", "type": "safe|warn|danger|info"},
-    {"label": "Redirect Risk", "value": "None/Detected", "type": "safe|warn|danger|info"}
+    {"label": "SSL Certificate", "value": "Valid or Invalid or Unknown", "type": "safe or warn or danger or info"},
+    {"label": "Domain Age", "value": "estimated age", "type": "safe or warn or danger or info"},
+    {"label": "TLD Risk", "value": "Low or Medium or High", "type": "safe or warn or danger or info"},
+    {"label": "Redirect Risk", "value": "None or Detected", "type": "safe or warn or danger or info"}
   ],
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4"]
+  "recommendations": ["rec1", "rec2", "rec3", "rec4"]
 }`;
 
-    // Call Anthropic API using your secret key stored in Netlify environment variables
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Call Google Gemini API (free tier)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+    const response = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY, // Set this in Netlify dashboard
-        "anthropic-version": "2023-06-01",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: `Analyze this URL for security threats: ${url}`,
-          },
-        ],
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1500,
+        },
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error?.message || "Anthropic API error");
+      throw new Error(data.error?.message || "Gemini API error");
     }
 
-    const text = data.content?.[0]?.text || "";
+    // Extract text from Gemini response
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const clean = text.replace(/```json|```/g, "").trim();
     const result = JSON.parse(clean);
 
@@ -115,6 +115,7 @@ JSON Schema:
       headers,
       body: JSON.stringify(result),
     };
+
   } catch (err) {
     console.error("PhishLens scan error:", err);
     return {
